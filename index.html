@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chat Mobile</title>
+    <style>
+        * { box-sizing: border-box; } /* Garante que padding não estoure a largura */
+
+        body { 
+            background-color: #121212; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100dvh; /* Altura dinâmica real do mobile */
+            margin: 0; 
+            overflow: hidden; /* Evita scroll na página inteira */
+        }
+
+        .container { 
+            width: 100%; 
+            max-width: 600px; /* No PC limita a largura */
+            height: 100%; /* No celular ocupa tudo */
+            background-color: #1e1e1e; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative;
+        }
+
+        /* Ajuste para PC (Cria a janela flutuante) */
+        @media (min-width: 601px) {
+            .container {
+                height: 90vh;
+                border-radius: 16px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            }
+        }
+        
+        /* Cabeçalho fixo */
+        header {
+            padding: 15px;
+            background-color: #252526;
+            border-bottom: 1px solid #333;
+            color: #fff;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        #lista-mensagens {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background-color: #1e1e1e;
+        }
+
+        .balao {
+            padding: 10px 14px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+            color: white;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+
+        .recebida {
+            background-color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .minha-mensagem {
+            background-color: #0078d4;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .input-area { 
+            display: flex; 
+            padding: 10px; 
+            background-color: #252526; 
+            border-top: 1px solid #333;
+            padding-bottom: env(safe-area-inset-bottom); /* Proteção para iPhone X+ */
+        }
+
+        input { 
+            flex: 1; 
+            padding: 12px; 
+            border-radius: 20px; 
+            border: 1px solid #444; 
+            background-color: #333; 
+            color: white; 
+            font-size: 16px; /* 16px impede zoom automático no iOS */
+            outline: none;
+        }
+
+        button { 
+            margin-left: 10px; 
+            padding: 0 20px; 
+            border-radius: 20px;
+            background-color: #0078d4;
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        button:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>Sala #1</header>
+        <div id="lista-mensagens"></div>
+        <div class="input-area">
+            <input type="text" id="input-mensagem" placeholder="Mensagem..." autocomplete="off" />
+            <button id="btn-enviar">➤</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = new WebSocket('wss://957177f3-7979.brs.devtunnels.ms'); // Troque localhost pelo IP da sua máquina se for testar no celular real
+        const lista = document.getElementById('lista-mensagens');
+        const input = document.getElementById('input-mensagem');
+        let meuId = null;
+
+        socket.onmessage = function(event) {
+            const dados = JSON.parse(event.data);
+
+            if (dados.type === 'sistema') {
+                meuId = dados.seuId;
+                return;
+            }
+
+            if (dados.type === 'mensagem') {
+                const novaLinha = document.createElement('div');
+                novaLinha.classList.add('balao');
+                novaLinha.textContent = dados.conteudo;
+
+                if (dados.idRemetente === meuId) {
+                    novaLinha.classList.add('minha-mensagem');
+                } else {
+                    novaLinha.classList.add('recebida');
+                }
+
+                lista.appendChild(novaLinha);
+                lista.scrollTop = lista.scrollHeight;
+            }
+        };
+
+        function enviar() {
+            if(input.value.trim()) {
+                socket.send(input.value);
+                input.value = '';
+                // No mobile, manter o focus pode ser ruim pq o teclado não fecha, 
+                // mas para chat rápido é bom.
+                input.focus(); 
+            }
+        }
+
+        document.getElementById('btn-enviar').onclick = enviar;
+        input.addEventListener('keypress', (e) => { if(e.key === 'Enter') enviar() });
+    </script>
+</body>
+</html>
